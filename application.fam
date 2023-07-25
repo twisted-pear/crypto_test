@@ -1,0 +1,10 @@
+App(
+    appid="crypto_test",
+    name="Crypto Test",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="crypto_test",
+    requires=[
+    ],
+    stack_size=8 * 1024,
+    fap_category="Examples",
+)
