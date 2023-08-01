@@ -54,6 +54,48 @@ static uint8_t pt2[32] = {
 	0x8b, 0xad, 0xf0, 0x0d,
 };
 
+static uint8_t aad1[32] = {
+	0x00, 0x01, 0x02, 0x03,
+	0x04, 0x05, 0x06, 0x07,
+	0x08, 0x09, 0x0a, 0x0b,
+	0x0c, 0x0d, 0x0e, 0x0f,
+	0x10, 0x11, 0x12, 0x13,
+	0x14, 0x15, 0x16, 0x17,
+	0x18, 0x19, 0x1a, 0x1b,
+	0x1c, 0x1d, 0x1e, 0x1f
+};
+
+static uint8_t aad2[31] = {
+	0x00, 0x01, 0x02, 0x03,
+	0x04, 0x05, 0x06, 0x07,
+	0x08, 0x09, 0x0a, 0x0b,
+	0x0c, 0x0d, 0x0e, 0x0f,
+	0x10, 0x11, 0x12, 0x13,
+	0x14, 0x15, 0x16, 0x17,
+	0x18, 0x19, 0x1a, 0x1b,
+	0x1c, 0x1d, 0x1e
+};
+
+static uint8_t aad3[28] = {
+	0x00, 0x01, 0x02, 0x03,
+	0x04, 0x05, 0x06, 0x07,
+	0x08, 0x09, 0x0a, 0x0b,
+	0x0c, 0x0d, 0x0e, 0x0f,
+	0x10, 0x11, 0x12, 0x13,
+	0x14, 0x15, 0x16, 0x17,
+	0x18, 0x19, 0x1a, 0x1b,
+};
+
+static uint8_t aad4[27] = {
+	0x00, 0x01, 0x02, 0x03,
+	0x04, 0x05, 0x06, 0x07,
+	0x08, 0x09, 0x0a, 0x0b,
+	0x0c, 0x0d, 0x0e, 0x0f,
+	0x10, 0x11, 0x12, 0x13,
+	0x14, 0x15, 0x16, 0x17,
+	0x18, 0x19, 0x1a
+};
+
 static uint8_t tv_ctr_ct_pt2_k1_iv1[32] = {
 	0x42, 0x23, 0x4a, 0x39,
 	0x8b, 0x39, 0x08, 0xb6,
@@ -152,6 +194,34 @@ static uint8_t tv_gcm_tag_pt1_k2_iv1_27[16] = {
 	0xa1, 0xfa, 0x39, 0xa6,
 	0xbb, 0x04, 0x89, 0x19,
 	0x2b, 0x2f, 0x07, 0x9f
+};
+
+static uint8_t tv_gcm_tag_pt1_k2_iv1_aad1_32[16] = {
+	0x1a, 0xb1, 0xfa, 0x68,
+	0x34, 0x65, 0x67, 0xea,
+	0x52, 0xca, 0x32, 0x0b,
+	0x1f, 0x84, 0xc4, 0xd1
+};
+
+static uint8_t tv_gcm_tag_pt1_k2_iv1_aad2_32[16] = {
+	0x80, 0x83, 0x2c, 0x9f,
+	0x24, 0x12, 0xc4, 0x4f,
+	0x4a, 0xd6, 0x10, 0x9e,
+	0x74, 0x46, 0x20, 0x62
+};
+
+static uint8_t tv_gcm_tag_pt1_k2_iv1_aad3_32[16] = {
+	0x3f, 0x5f, 0x18, 0x6f,
+	0x30, 0x90, 0xa8, 0x4c,
+	0x72, 0x1f, 0xb4, 0x61,
+	0xe2, 0x2a, 0x5b, 0x69
+};
+
+static uint8_t tv_gcm_tag_pt1_k2_iv1_aad4_32[16] = {
+	0x9e, 0xbf, 0xfe, 0xfa,
+	0xae, 0x61, 0x70, 0xc1,
+	0xdc, 0x73, 0x5a, 0xad,
+	0x09, 0xc0, 0xfc, 0x26
 };
 
 static void log_hex_str(const char *prefix, uint8_t *data, size_t len)
@@ -343,19 +413,21 @@ static bool ctr_test(int iv_id, int key_id, int pt_id, uint8_t *iv, uint8_t
 	return true;
 }
 
-static bool gcm_test(int iv_id, int key_id, int pt_id, uint8_t *iv, uint8_t
-		*key, uint8_t *pt, size_t length, uint8_t *tv_ct, uint8_t
-		*tv_tag)
+static bool gcm_test(int iv_id, int key_id, int aad_id, int pt_id, uint8_t *iv,
+		uint8_t *key, uint8_t *aad, size_t aad_length, uint8_t *pt,
+		size_t length, uint8_t *tv_ct, uint8_t *tv_tag)
 {
 
-	FURI_LOG_I(APPLICATION_NAME, "Testing GCM encryption of Plaintext %d "
-			"using Key %d and IV %d...", pt_id, key_id, iv_id);
+	FURI_LOG_I(APPLICATION_NAME, "Testing GCM encryption of AAD %d and "
+			"Plaintext %d using Key %d and IV %d...", aad_id,
+			pt_id, key_id, iv_id);
 
 	uint8_t ct[length];
 	uint8_t tag_enc[16];
 
 	FURI_LOG_I(APPLICATION_NAME, "GCM encrypting Plaintext %d...", pt_id);
-	if (!furi_hal_crypto_gcm(key, iv, pt, ct, length, tag_enc, false)) {
+	if (!furi_hal_crypto_gcm(key, iv, aad, aad_length, pt, ct, length,
+				tag_enc, false)) {
 		FURI_LOG_I(APPLICATION_NAME,
 				"GCM encryption of Plaintext %d failed.",
 				pt_id);
@@ -366,14 +438,16 @@ static bool gcm_test(int iv_id, int key_id, int pt_id, uint8_t *iv, uint8_t
 
 	FURI_LOG_I(APPLICATION_NAME, "Encryption test successful.");
 
-	FURI_LOG_I(APPLICATION_NAME, "Testing GCM decryption of Ciphertext %d "
-			"using Key %d and IV %d...", pt_id, key_id, iv_id);
+	FURI_LOG_I(APPLICATION_NAME, "Testing GCM decryption of AAD %d and "
+			"Ciphertext %d using Key %d and IV %d...", aad_id,
+			pt_id, key_id, iv_id);
 
 	uint8_t dec_pt[length];
 	uint8_t tag_dec[16];
 
 	FURI_LOG_I(APPLICATION_NAME, "GCM decrypting Ciphertext %d...", pt_id);
-	if (!furi_hal_crypto_gcm(key, iv, ct, dec_pt, length, tag_dec, true)) {
+	if (!furi_hal_crypto_gcm(key, iv, aad, aad_length, ct, dec_pt, length,
+				tag_dec, true)) {
 		FURI_LOG_I(APPLICATION_NAME,
 				"GCM decryption of Ciphertext %d failed.",
 				pt_id);
@@ -420,6 +494,9 @@ static bool gcm_test(int iv_id, int key_id, int pt_id, uint8_t *iv, uint8_t
 
 	furi_string_printf(prefix, "IV %d", iv_id);
 	log_hex_str(furi_string_get_cstr(prefix), iv, 16);
+
+	furi_string_printf(prefix, "AAD %d", aad_id);
+	log_hex_str(furi_string_get_cstr(prefix), aad, aad_length);
 
 	furi_string_printf(prefix, "Plaintext %d", pt_id);
 	log_hex_str(furi_string_get_cstr(prefix), pt, length);
@@ -498,50 +575,86 @@ int32_t crypto_test(void)
 		return 0;
 	}
 
-	if (!gcm_test(1, 1, 2, iv1, key1, pt2, 32, tv_gcm_ct_pt2_k1_iv1,
+	if (!gcm_test(1, 1, 0, 2, iv1, key1, NULL, 0, pt2, 32,
+				tv_gcm_ct_pt2_k1_iv1,
 				tv_gcm_tag_pt2_k1_iv1_32)) {
 		FURI_LOG_I(APPLICATION_NAME, "Error, terminating...");
 		return 0;
 	}
 
-	if (!gcm_test(1, 1, 2, iv1, key1, pt2, 31, tv_gcm_ct_pt2_k1_iv1,
+	if (!gcm_test(1, 1, 0, 2, iv1, key1, NULL, 0, pt2, 31,
+				tv_gcm_ct_pt2_k1_iv1,
 				tv_gcm_tag_pt2_k1_iv1_31)) {
 		FURI_LOG_I(APPLICATION_NAME, "Error, terminating...");
 		return 0;
 	}
 
-	if (!gcm_test(1, 1, 2, iv1, key1, pt2, 28, tv_gcm_ct_pt2_k1_iv1,
+	if (!gcm_test(1, 1, 0, 2, iv1, key1, NULL, 0, pt2, 28,
+				tv_gcm_ct_pt2_k1_iv1,
 				tv_gcm_tag_pt2_k1_iv1_28)) {
 		FURI_LOG_I(APPLICATION_NAME, "Error, terminating...");
 		return 0;
 	}
 
-	if (!gcm_test(1, 1, 2, iv1, key1, pt2, 27, tv_gcm_ct_pt2_k1_iv1,
+	if (!gcm_test(1, 1, 0, 2, iv1, key1, NULL, 0, pt2, 27,
+				tv_gcm_ct_pt2_k1_iv1,
 				tv_gcm_tag_pt2_k1_iv1_27)) {
 		FURI_LOG_I(APPLICATION_NAME, "Error, terminating...");
 		return 0;
 	}
 
-	if (!gcm_test(1, 2, 1, iv1, key2, pt1, 32, tv_gcm_ct_pt1_k2_iv1,
+	if (!gcm_test(1, 2, 0, 1, iv1, key2, NULL, 0, pt1, 32,
+				tv_gcm_ct_pt1_k2_iv1,
 				tv_gcm_tag_pt1_k2_iv1_32)) {
 		FURI_LOG_I(APPLICATION_NAME, "Error, terminating...");
 		return 0;
 	}
 
-	if (!gcm_test(1, 2, 1, iv1, key2, pt1, 31, tv_gcm_ct_pt1_k2_iv1,
+	if (!gcm_test(1, 2, 0, 1, iv1, key2, NULL, 0, pt1, 31,
+				tv_gcm_ct_pt1_k2_iv1,
 				tv_gcm_tag_pt1_k2_iv1_31)) {
 		FURI_LOG_I(APPLICATION_NAME, "Error, terminating...");
 		return 0;
 	}
 
-	if (!gcm_test(1, 2, 1, iv1, key2, pt1, 28, tv_gcm_ct_pt1_k2_iv1,
+	if (!gcm_test(1, 2, 0, 1, iv1, key2, NULL, 0, pt1, 28,
+				tv_gcm_ct_pt1_k2_iv1,
 				tv_gcm_tag_pt1_k2_iv1_28)) {
 		FURI_LOG_I(APPLICATION_NAME, "Error, terminating...");
 		return 0;
 	}
 
-	if (!gcm_test(1, 2, 1, iv1, key2, pt1, 27, tv_gcm_ct_pt1_k2_iv1,
+	if (!gcm_test(1, 2, 0, 1, iv1, key2, NULL, 0, pt1, 27,
+				tv_gcm_ct_pt1_k2_iv1,
 				tv_gcm_tag_pt1_k2_iv1_27)) {
+		FURI_LOG_I(APPLICATION_NAME, "Error, terminating...");
+		return 0;
+	}
+
+	if (!gcm_test(1, 2, 1, 1, iv1, key2, aad1, 32, pt1, 32,
+				tv_gcm_ct_pt1_k2_iv1,
+				tv_gcm_tag_pt1_k2_iv1_aad1_32)) {
+		FURI_LOG_I(APPLICATION_NAME, "Error, terminating...");
+		return 0;
+	}
+
+	if (!gcm_test(1, 2, 2, 1, iv1, key2, aad2, 31, pt1, 32,
+				tv_gcm_ct_pt1_k2_iv1,
+				tv_gcm_tag_pt1_k2_iv1_aad2_32)) {
+		FURI_LOG_I(APPLICATION_NAME, "Error, terminating...");
+		return 0;
+	}
+
+	if (!gcm_test(1, 2, 3, 1, iv1, key2, aad3, 28, pt1, 32,
+				tv_gcm_ct_pt1_k2_iv1,
+				tv_gcm_tag_pt1_k2_iv1_aad3_32)) {
+		FURI_LOG_I(APPLICATION_NAME, "Error, terminating...");
+		return 0;
+	}
+
+	if (!gcm_test(1, 2, 4, 1, iv1, key2, aad4, 27, pt1, 32,
+				tv_gcm_ct_pt1_k2_iv1,
+				tv_gcm_tag_pt1_k2_iv1_aad4_32)) {
 		FURI_LOG_I(APPLICATION_NAME, "Error, terminating...");
 		return 0;
 	}
